@@ -1,0 +1,63 @@
+---
+title: "Practical Machine Learning"
+output: html_document
+---
+###Assignment Background
+Using devices such as Jawbone Up, Nike FuelBand, and Fitbit it is now possible to collect a large amount of data about personal activity relatively inexpensively. These type of devices are part of the quantified self movement - a group of enthusiasts who take measurements about themselves regularly to improve their health, to find patterns in their behavior, or because they are tech geeks. One thing that people regularly do is quantify how much of a particular activity they do, but they rarely quantify how well they do it. In this project, your goal will be to use data from accelerometers on the belt, forearm, arm, and dumbell of 6 participants. They were asked to perform barbell lifts correctly and incorrectly in 5 different ways. More information is available from the website here: <http://groupware.les.inf.puc-rio.br/har> (see the section on the Weight Lifting Exercise Dataset). 
+  
+###Data 
+The training data for this project are available here: 
+
+<https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv>
+
+The test data are available here: 
+
+<https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv>
+  
+###Loading the Data and Required Packages  
+```{r}
+library(caret)
+
+training<-"http://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv"
+testing<-"http://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv"
+training<-read.csv(training); testing<-read.csv(testing)
+```
+
+###PreProcessing
+Since the data has been provided already divided into the training and testing sets, no further partitioning is necessary.  We will build our model using the training set provided and test it only once on the provided testing set.  A quick look at the training set shows us there are 160 variables and almost 20000 observations
+```{r}
+dim(training)
+```
+  A brief view of the data shows that many of these variables are missing values, either nothing is listed or NA is recorded.  
+```{r}
+head(training)
+```
+  Our first steps of preprocessing will remove these low-impact variables which don't have much predicting information available.  
+```{r}
+nzv<-nearZeroVar(training)
+    #Creates a list of predictors that have very few unique values and would therefore be very poor preditors
+training<-training[,-nzv]
+    #removes the variables identified by nearZeroVar function.  Cleans data to 99 possible predictor variables
+training<-training[,colSums(is.na(training))<(.5*nrow(training))]
+    #subsets a list variables where less than half of the observations (.5*nrow(predictors)) are missing (NA).  In other words, variables where more than half of the measurments are present. Cleans data to 58 variables.
+```
+Let's look again at the cleaned up data set.
+```{r}
+head(training)
+```
+It appears the first six variables include information unrealted to the sensors.  We should remove this data so it does not interfer with the desired predictors in our model building.
+```{r}
+training<-training[7:59]
+  #Creats subset that only includes desired sensor data and outcome. Cleans data to 53 variables.
+```  
+  
+###Model Training
+Now to fit a random forest model to the cleaned training data.  A random forest model was selected for its high level of prediction accuracy. Unfortunetly it is also a very slow due to large data processing and can take several hours to complete.
+We will use the train function from the caret package as it will incoporate cross-validation in the model training in order to avoid overfitting.   
+```{r}
+modFitRF<-train(classe~., method="rf", data=training, prox=TRUE)
+  #Accuracy .99 
+modFitRF
+```
+The above model shows an accuracy rate of 99.3%.  This indicates an in-sample error rate of 0.7%.  We would expect the out of sample error rate to be slightly higher, perhaps 1%, but still well below 5%.  These are good odds as our testing data includes 20 observations.  With an estimated out of sample of less than 1/20 we can expect 100% accuracy for the submission portion of the project. 
+
